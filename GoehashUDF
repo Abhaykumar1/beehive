@@ -1,0 +1,73 @@
+CREATE FUNCTION [dbo].[createGeohash]
+    (
+      @LONGITUDE  NUMERIC(10, 6),
+      @LATITUDE NUMERIC(10, 6),
+      @PRECISION INT
+    )
+RETURNS VARCHAR(12) 
+AS
+	BEGIN
+		DECLARE @GEOHASH_CHARSET CHAR(32)
+		SET @GEOHASH_CHARSET = '0123456789bcdefghjkmnpqrstuvwxyz'
+		
+		DECLARE @MIN_LAT AS NUMERIC(12,8) = -90.0
+		DECLARE @MAX_LAT AS NUMERIC(12,8)  = 90.0
+		DECLARE @MIN_LNG AS NUMERIC(12,8)  = -180.0
+		DECLARE @MAX_LNG AS NUMERIC(12,8)  = 180.0
+		
+		DECLARE @IDX AS INT = 0
+		DECLARE @BIT AS INT = 0
+		DECLARE @GEOHASH AS VARCHAR(12)
+		DECLARE @GEOHASH_SUFFIX AS CHAR(1)
+		DECLARE @MID_POINT AS NUMERIC(12,8)
+	
+		DECLARE @LOOPCOUNTER AS INT = 0
+		DECLARE @EVEN AS BIT = 1
+
+		SET @LOOPCOUNTER = 0
+		WHILE (@LOOPCOUNTER < @PRECISION)
+		  BEGIN
+		      	
+		    IF(@EVEN > 0) 
+				BEGIN 
+				   SET @MID_POINT = (@MIN_LNG + @MAX_LNG) / 2
+						IF(@LONGITUDE >= @MID_POINT)
+							BEGIN  
+		       					SET @MIN_LNG = @MID_POINT
+								SET @IDX = (@IDX * 2) + 1	
+							END
+		     			ELSE
+							BEGIN
+		       					SET @MAX_LNG = @MID_POINT
+								SET @IDX = (@IDX * 2)
+							END
+				END  
+			ELSE 
+				BEGIN	
+					SET @MID_POINT = (@MIN_LAT + @MAX_LAT) / 2
+						IF(@LATITUDE >= @MID_POINT) 
+							BEGIN
+		       					SET @MIN_LAT = @MID_POINT
+								SET @IDX = (@IDX * 2) + 1		
+							END
+						ELSE 
+							BEGIN
+		       					SET @MAX_LAT = @MID_POINT
+								SET @IDX = (@IDX * 2)
+                            END
+					END	
+			
+			SET @EVEN = ~@EVEN				
+			SET @BIT = @BIT + 1
+			
+			IF(@BIT = 5)
+				BEGIN
+					SET @GEOHASH_SUFFIX = SubString(@GEOHASH_CHARSET, @IDX + 1, 1)
+					SET @GEOHASH = CONCAT(@GEOHASH, @GEOHASH_SUFFIX)
+					SET @LOOPCOUNTER = @LOOPCOUNTER + 1
+ 					SET @BIT = 0
+					SET @IDX = 0
+				END
+		END
+ 	RETURN @GEOHASH
+END
